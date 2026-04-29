@@ -24,3 +24,6 @@ data.json
 yarn.lock
 .vscode
 dist
+
+
+.ref
