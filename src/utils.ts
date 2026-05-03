@@ -1,6 +1,5 @@
-import { settings } from "cluster";
-// import type moment from "moment";
-import type { Moment } from "moment";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Moment = any;
 import { WorkspacePluginInstance, App, normalizePath, TFile } from "obsidian";
 import {
   IGranularity,
@@ -203,6 +202,45 @@ export default class Utils {
         })
       );
     }
+  }
+
+  findFirstTabsContainer (node: any): any | null {
+    if (node.type === "tabs") return node;
+    if (node.children) {
+      for (const child of node.children) {
+        const found = this.findFirstTabsContainer(child);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  addFileToWorkspace (workspaceName: string, filePath: string): boolean {
+    const workspace = this.getWorkspace(workspaceName);
+    if (!workspace?.main) return false;
+
+    const tabsContainer = this.findFirstTabsContainer(workspace.main);
+    const newId = Array.from(crypto.getRandomValues(new Uint8Array(4)))
+      .map(b => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    const newLeaf = {
+      type: "leaf",
+      id: newId,
+      state: { type: "markdown", state: { file: filePath, mode: "source", source: false } },
+    };
+
+    if (tabsContainer) {
+      tabsContainer.children.push(newLeaf);
+    } else if (workspace.main.type === "leaf") {
+      const existingLeaf = { ...workspace.main };
+      workspace.main = { type: "tabs", children: [existingLeaf, newLeaf] };
+    } else {
+      return false;
+    }
+
+    this.workspacePlugin.saveData();
+    return true;
   }
 
   getModeSettings (name: string) {

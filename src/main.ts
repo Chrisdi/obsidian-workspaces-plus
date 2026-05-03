@@ -7,10 +7,13 @@ import {
   normalizePath,
   TFile,
   MarkdownView,
+  Menu,
+  Editor,
 } from "obsidian";
 import { WorkspacesPlusSettings, WorkspacesPlusSettingsTab, DEFAULT_SETTINGS } from "./settings";
 import { WorkspacesPlusPluginWorkspaceModal } from "./workspaceModal";
 import { WorkspacesPlusPluginModeModal } from "./modeModal";
+import { SendToWorkspaceModal } from "./sendToWorkspaceModal";
 import { around } from "monkey-around";
 import Utils from "./utils";
 
@@ -129,6 +132,16 @@ export default class WorkspacesPlus extends Plugin {
         new Notice("Successfully saved workspace: " + this.workspacePlugin.activeWorkspace);
       },
     });
+    this.addCommand({
+      id: "send-note-to-workspace",
+      name: "Send note to workspace",
+      checkCallback: (checking: boolean) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file) return false;
+        if (!checking) new SendToWorkspaceModal(this, file.path).open();
+        return true;
+      },
+    });
   }
 
   registerEventHandlers() {
@@ -138,6 +151,27 @@ export default class WorkspacesPlus extends Plugin {
     this.registerEvent(this.app.workspace.on("workspace-load", this.onWorkspaceLoad));
     this.registerEvent(this.app.workspace.on("layout-change", this.onLayoutChange));
     this.registerEvent(this.app.workspace.on("resize", this.onLayoutChange));
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu: Menu, file, source: string) => {
+        if (!(file instanceof TFile)) return;
+        menu.addItem(item =>
+          item.setTitle("Send to workspace...").setIcon("forward").onClick(() =>
+            new SendToWorkspaceModal(this, file.path).open()
+          )
+        );
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on("editor-menu", (menu: Menu, editor: Editor, info: any) => {
+        const file = info?.file;
+        if (!file) return;
+        menu.addItem(item =>
+          item.setTitle("Send to workspace...").setIcon("forward").onClick(() =>
+            new SendToWorkspaceModal(this, file.path).open()
+          )
+        );
+      })
+    );
   }
 
   get changeWorkspaceButton() {
@@ -244,6 +278,17 @@ export default class WorkspacesPlus extends Plugin {
     });
     // register click handler
     statusBarItem.addEventListener("click", evt => this.onStatusBarClick(evt, modalType));
+  }
+
+  sendNoteToWorkspace(targetWorkspaceName: string, filePath: string): void {
+    const added = this.utils.addFileToWorkspace(targetWorkspaceName, filePath);
+    if (!added) {
+      new Notice(`Could not send note to workspace "${targetWorkspaceName}"`);
+      return;
+    }
+    const activeLeaf = (this.app.workspace as any).getMostRecentLeaf?.();
+    activeLeaf?.detach();
+    new Notice(`Sent to workspace: ${targetWorkspaceName}`);
   }
 
   onStatusBarClick(evt: MouseEvent, modalType: string) {

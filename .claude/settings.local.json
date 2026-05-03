@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(mjs|js|json\\)$\")",
+      "Bash(rtk pnpm:*)",
+      "Bash(pnpm build:*)",
+      "Bash(node -e \"require\\('./node_modules/obsidian-dev-skills/package.json'\\).main\")",
+      "Bash(node scripts/upgrade.mjs --dry-run)",
+      "Bash(rtk git:*)"
+    ]
+  }
+}
